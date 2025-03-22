@@ -1,13 +1,24 @@
 // Import dependencies
-require("dotenv").config();
+require("dotenv").config({ path: './.env.login-server' });
+const createLogger = require('./controlProperties/logger')
 const express = require("express");
 const cors = require("cors");
 const http = require("http");
 // const bodyParser = require("body-parser");
 const { io } = require("socket.io-client");
 
+const author = process.env.APP_AUTHOR;
 const idLoginSvr = "mcLgn3";
-const socket = io("http://localhost:3002");
+
+const logLogin = createLogger()
+
+logLogin.setFolderFilePath(process.env.LOGIN_LOG_APP).setSilentMode(true).setCustomFile("loginInfo").startLog();
+
+if (!process.env.VITE_MAIN_APP_PORT || !process.env.VITE_MAIN_SOCKET_IP) {
+  console.error("gagal mendapatkan host main server app")
+  process.exit(1)
+}
+const socket = io(`http://${process.env.VITE_MAIN_SOCKET_IP}:${process.env.VITE_MAIN_APP_PORT}`);
 socket.emit("loginServerAcc", "active");
 socket.emit("register", idLoginSvr);
 //socket.close("loginServerAcc");
@@ -18,15 +29,18 @@ const {
   userDataDT,
   getUserDataSLogin,
 } = require("./accountController/userData");
+const { send } = require("process");
 
 let flags = "======================================\n";
 flags    += "== C2025 Minecraft_Arcedia Login_CT ==\n";
+flags    += `==        Made by ${author}        ===\n`
 flags    += "======================================";
 console.log(flags);
 
 // Setup express app
 const app = express();
-const PORT = 3001;
+const HOST = process.env.VITE_LOGIN_SOCKET_IP;
+const PORT = process.env.VITE_LOGIN_PORT;
 
 // Middleware
 app.use(cors());
@@ -83,7 +97,7 @@ app.post("/api/login", async (req, res) => {
 
   // setTimeout(() => { // tolong perbaiki agar lebih dynamic
   // console.log("main Auth run");
-  await authCR.login(req, res);
+  await authCR.login(req, res); // nanti console.log
   // }, 3000)
 });
 
@@ -91,11 +105,13 @@ app.post("/api/login", async (req, res) => {
 app.post("/api/register", authCR.register);
 
 app.get("/api/clientConnected", (req, res) => {
-  res.send("core: Connected");
+  // res.json({ message: "core: Connected", status: 200 });
+  res.send("client: connected")
 });
 
 // Start the server
-server.listen(PORT, () => {
+server.listen(PORT, HOST, () => {
   databaseCheck()
-  console.log(`Login Server running on http://localhost:${PORT}`);
+  console.log(`Login Server running on http://${HOST}:${PORT}`);
+  logLogin.getLineCode().info(`Login Server running on http://${HOST}:${PORT}`)
 });
